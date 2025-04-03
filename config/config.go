@@ -2,6 +2,7 @@ package config
 
 import (
     "os"
+    "fmt"
     "encoding/json"
 )
 
@@ -24,16 +25,16 @@ type Bucket struct {
     Name string `json:"name"`
 }
 
-func New(configPath string) (*Config, error) {
+func New(configPath string) (Config, error) {
     c, err := os.ReadFile(configPath)
     if err != nil {
-        return nil, fmt.Errorf("error, when reading config file. Error: %v", err)
+        return Config{}, fmt.Errorf("error, when reading config file. Error: %v", err)
     }
 
     result := Config{}
     err = json.Unmarshal(c, &result)
     if err != nil {
-        return nil, fmt.Errorf("error, when decoding config file. Error: %v", err)
+        return Config{}, fmt.Errorf("error, when decoding config file. Error: %v", err)
     }
-    return &result, nil
+    return result, nil
 }
