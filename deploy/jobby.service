@@ -1,0 +1,13 @@
+[Unit]
+Description=It Runs Jobs
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/home/piegarden/jobby/app -c /home/piegarden/jobby/config.json
+
+Restart=on-failure
+User=root
+
+[Install]
+WantedBy=multi-user.target

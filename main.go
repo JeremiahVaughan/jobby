@@ -13,7 +13,7 @@ import (
 func main() {
     log.Println("jobby starting")
     ctx := context.Background()
-    configPath := flag.String("config path", "config/config.json", "location of config file")
+    configPath := flag.String("c", "config.json", "location of config file")
     flag.Parse()
     
     theConfig, err := config.New(*configPath) 
