@@ -5,6 +5,7 @@ After=network.target
 [Service]
 Type=simple
 ExecStart=/home/piegarden/jobby/app -c /home/piegarden/jobby/config.json
+EnvironmentFile=/home/piegarden/jobby/.env
 
 Restart=on-failure
 User=root

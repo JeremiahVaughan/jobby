@@ -1,10 +1,28 @@
 {
     "clients": {
-        "database": {
-            "host": "",
-            "username": "",
-            "password": ""
-        },
+        "databases": [
+            {
+                "host": "10.0.0.7",
+                "name": "upload",
+                "username": "upload",
+                "password": "",
+                "port": "5432"
+            },
+            {
+                "host": "10.0.0.7",
+                "name": "user",
+                "username": "user",
+                "password": "",
+                "port": "5432"
+            },
+            {
+                "host": "10.0.0.7",
+                "name": "payment",
+                "username": "payment",
+                "password": "",
+                "port": "5432"
+            }
+        ],
         "bucket": {
             "name": ""
         }

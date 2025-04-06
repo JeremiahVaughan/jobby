@@ -11,12 +11,13 @@ type Config struct {
 }
 
 type Clients struct {
-    Database Database `json:"database"`
+    Databases []Database `json:"databases"`
     Bucket Bucket `json:"bucket"`
 }
 
 type Database struct {
     Host string `json:"host"`
+    Name string `json:"name"`
     Username string `json:"username"`
     Password string `json:"password"`
 }
@@ -24,6 +25,7 @@ type Database struct {
 type Bucket struct {
     Name string `json:"name"`
 }
+
 
 func New(configPath string) (Config, error) {
     c, err := os.ReadFile(configPath)
