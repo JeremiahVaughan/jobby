@@ -2,7 +2,7 @@ package controllers
 
 import (
     "context"
-    "github.com/JeremiahVaughan/jobby/config" 
+    "github.com/JeremiahVaughan/jobby/clients" 
 )
 
 type Controller interface {
@@ -11,9 +11,9 @@ type Controller interface {
 
 type Controllers []Controller
 
-func New(config config.Config) Controllers {
+func New(clients *clients.Clients) Controllers {
     var result []Controller
-    dbBackup := NewDatabaseBackupController(config)
+    dbBackup := NewDatabaseBackupController(clients)
     result = append(result, dbBackup)
     return result
 }

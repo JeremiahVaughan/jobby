@@ -7,15 +7,15 @@ import (
     "fmt"
 
     "github.com/JeremiahVaughan/jobby/models" 
-    "github.com/JeremiahVaughan/jobby/config" 
+    "github.com/JeremiahVaughan/jobby/clients" 
 )
 
 type DatabaseBackupController struct {
     model *models.DatabaseBackupModel
 }
 
-func NewDatabaseBackupController(config config.Config) *DatabaseBackupController {
-    dbModel := models.NewDatabaseBackupModel(config)
+func NewDatabaseBackupController(clients *clients.Clients) *DatabaseBackupController {
+    dbModel := models.NewDatabaseBackupModel(clients)
     return &DatabaseBackupController{ 
         model: dbModel, 
     }
@@ -26,7 +26,7 @@ func (c *DatabaseBackupController) Start(ctx context.Context) error {
     select {
     case t := <- ticker:
         if t.Hour() == 5 {
-            err := c.model.BackupDatabase()
+            err := c.model.BackupDatabases(ctx)
             if err != nil {
                 return fmt.Errorf("error, when model.BackupDatabase() for DatabaseBackupController.Start(). Error: %v", err) 
             }
