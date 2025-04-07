@@ -23,15 +23,17 @@ func NewDatabaseBackupController(clients *clients.Clients) *DatabaseBackupContro
 
 func (c *DatabaseBackupController) Start(ctx context.Context) error {
     ticker := time.Tick(time.Hour) 
-    select {
-    case t := <- ticker:
-        if t.Hour() == 5 {
-            err := c.model.BackupDatabases(ctx)
-            if err != nil {
-                return fmt.Errorf("error, when model.BackupDatabase() for DatabaseBackupController.Start(). Error: %v", err) 
+    for {
+        select {
+        case t := <- ticker:
+            if t.Hour() == 5 {
+                err := c.model.BackupDatabases(ctx)
+                if err != nil {
+                    return fmt.Errorf("error, when model.BackupDatabase() for DatabaseBackupController.Start(). Error: %v", err) 
+                }
             }
+        case <- ctx.Done():
+            return nil
         }
-    case <- ctx.Done():
     }
-    return nil
 }
