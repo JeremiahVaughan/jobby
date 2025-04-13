@@ -1,3 +1,8 @@
+Ensure local ~/.ssh/config file contains an entry for "deploy.target"
+
+Deploy:
+```./deploy.sh```
+
 Dependencies:
     - Install pg_dump
 ```sudo apt update && sudo apt install postgresql-client -y```
