@@ -1,4 +1,7 @@
-sudo cp $HOME/jobby/jobby.service /etc/systemd/system/jobby.service
-sudo systemctl enable jobby.service
-sudo systemctl start jobby.service
-sudo systemctl restart jobby.service
+APP=jobby
+
+set -e
+sudo cp "$HOME/deploy/${APP}/${APP}.service" "/etc/systemd/system/${APP}.service"
+sudo systemctl enable "${APP}.service"
+sudo systemctl start "${APP}.service"
+sudo systemctl restart "${APP}.service"
