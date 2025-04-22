@@ -50,7 +50,7 @@ func (m *DatabaseBackupModel) BackupDatabases(ctx context.Context) error {
     file.Close()
     for _, db := range m.databases {
         objectName := fmt.Sprintf("%s_dump.sql", db.Config.Name)
-        dumpFileName := fmt.Sprintf("/tmp/%s", objectName)
+        fileLocation := fmt.Sprintf("/tmp/%s", objectName)
         cmd := exec.Command(
             "pg_dump",
             "-h", 
@@ -62,15 +62,15 @@ func (m *DatabaseBackupModel) BackupDatabases(ctx context.Context) error {
             "-d", 
             db.Config.Name,
             "-f",
-            dumpFileName,
+            fileLocation,
         )
         output, err := cmd.CombinedOutput()
         if err != nil {
             return fmt.Errorf("error, when executing pg_dump command. stderr: %s. Error: %v", output, err)
         }
-        err = m.bucket.BackupFile(ctx, dumpFileName, objectName)
+        err = m.bucket.UploadFromDisk(ctx, fileLocation, objectName)
         if err != nil {
-            return fmt.Errorf("error, when bucket.BackupFile() for models.DatabaseBackupModel.BackupDatabases(). Error: %v", err)
+            return fmt.Errorf("error, when bucket.Upload() for models.DatabaseBackupModel.BackupDatabases(). Error: %v", err)
         }
     }
     log.Printf("database backup completed")

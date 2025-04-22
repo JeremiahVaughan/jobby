@@ -16,6 +16,7 @@ import (
 type Client struct {
     m sync.Mutex
     uploader *manager.Uploader
+    downloader *manager.Downloader
     config config.Bucket
 }
 
@@ -25,23 +26,23 @@ func New(ctx context.Context, config config.Bucket) (*Client, error) {
         return nil, fmt.Errorf("error, when loading default config. Error: %v", err)
     }
     c := s3.NewFromConfig(cfg)
-    uploader := manager.NewUploader(c)
     return &Client{
-        uploader: uploader,
+        uploader: manager.NewUploader(c),
+        downloader: manager.NewDownloader(c),
         config: config,
     }, nil
 }
 
-func (c *Client) BackupFile(
+func (c *Client) UploadFromDisk(
     ctx context.Context,
-    fileName string,
+    fileLocation string,
     objectName string,
 ) error {
     c.m.Lock()
     defer c.m.Unlock()
-    file, err := os.Open(fileName)
+    file, err := os.Open(fileLocation)
     if err != nil {
-        return fmt.Errorf("error, when opening file %s. Error: %v", fileName, err)
+        return fmt.Errorf("error, when opening file %s. Error: %v", fileLocation, err)
     }
     defer file.Close()
     object := s3.PutObjectInput{
@@ -54,9 +55,36 @@ func (c *Client) BackupFile(
         return fmt.Errorf(
             "error, when uploading file. BucketName: %s. Object Name: %s. Error: %v",
             c.config.Name,
-            fileName,
+            fileLocation,
             err,
         )
     }
     return nil
 }
+
+func (c *Client) DownloadToDisk(                                            
+   ctx context.Context,                                              
+   objectName string,                                                
+   outputLocation string,                                            
+) error {                                                             
+   c.m.Lock()                                                        
+   defer c.m.Unlock()                                                
+                                                                     
+   outFile, err := os.Create(outputLocation)                         
+   if err != nil {                                                   
+       return fmt.Errorf("error, when creating output file %s. Error: %v", outputLocation, err)                                      
+   }                                                                 
+   defer outFile.Close()                                             
+                                                                     
+   object := &s3.GetObjectInput{                                     
+       Bucket: aws.String(c.config.Name),                            
+       Key: aws.String(objectName),                                  
+   }                                                                 
+                                                                     
+   _, err = c.downloader.Download(ctx, outFile, object)           
+   if err != nil {                                                   
+       return fmt.Errorf("error, failed to download file. Error: %v", err)         
+   }                                                                 
+                                                                     
+   return nil                                                        
+}                                                                     

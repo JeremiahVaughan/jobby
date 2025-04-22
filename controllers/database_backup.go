@@ -7,17 +7,15 @@ import (
     "fmt"
 
     "github.com/JeremiahVaughan/jobby/models" 
-    "github.com/JeremiahVaughan/jobby/clients" 
 )
 
 type DatabaseBackupController struct {
     model *models.DatabaseBackupModel
 }
 
-func NewDatabaseBackupController(clients *clients.Clients) *DatabaseBackupController {
-    dbModel := models.NewDatabaseBackupModel(clients)
+func NewDatabaseBackupController(model *models.DatabaseBackupModel) *DatabaseBackupController {
     return &DatabaseBackupController{ 
-        model: dbModel, 
+        model: model,
     }
 }
 

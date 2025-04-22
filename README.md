@@ -16,12 +16,16 @@ Dependencies:
             - Install From: https://www.sqlite.org/download.html
                 - Unless Raspberry pi you will need to compile from source: https://til.simonwillison.net/sqlite/compile-sqlite3-rsync
     
+Config
+    Upload with:
+```aws s3 cp <local_file_path> s3://<bucket_name>/<object_key>```
+    Download with:
+```aws s3 cp s3://<bucket_name>/<object_key> <local_file_path>```
 
 Config locations:
-    - For local:
-```./config.json```
-    - For deployment:
-```./deploy/config.json```
+    Config is grabbed from s3 but make sure you emplace s3 files at:
+```/root/.aws/config```
+```/root/.aws/credentials```
 
 See status:
 ```sudo systemctl status jobby.service```

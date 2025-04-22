@@ -1,5 +1,9 @@
 {
     "clients": {
+        "sqlite": {
+            "dataDirectory": "/tmp/jobbyDatabase",
+            "migrationDirectory": "migrate"
+        },
         "databases": [
             {
                 "host": "10.0.0.7",

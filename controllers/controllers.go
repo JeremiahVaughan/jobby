@@ -2,7 +2,7 @@ package controllers
 
 import (
     "context"
-    "github.com/JeremiahVaughan/jobby/clients" 
+    "github.com/JeremiahVaughan/jobby/models" 
 )
 
 type Controller interface {
@@ -11,9 +11,19 @@ type Controller interface {
 
 type Controllers []Controller
 
-func New(clients *clients.Clients) Controllers {
+type HttpControllers struct {
+    AcmeChallenger *AcmeChallengerController
+}
+
+func New(models *models.Models) Controllers {
     var result []Controller
-    dbBackup := NewDatabaseBackupController(clients)
+    dbBackup := NewDatabaseBackupController(models.DatabaseBackup)
     result = append(result, dbBackup)
     return result
+}
+
+func NewHttpControllers(models *models.Models) *HttpControllers {
+    return &HttpControllers{
+        AcmeChallenger: NewAcmeChallengerController(models),
+    }
 }

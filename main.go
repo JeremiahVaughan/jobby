@@ -1,34 +1,35 @@
 package main
 
 import (
-    "flag"
     "context"
     "log"
 
-    "github.com/JeremiahVaughan/jobby/controllers" 
     "github.com/JeremiahVaughan/jobby/config" 
     "github.com/JeremiahVaughan/jobby/clients" 
+    "github.com/JeremiahVaughan/jobby/models" 
+    "github.com/JeremiahVaughan/jobby/controllers" 
+    "github.com/JeremiahVaughan/jobby/router" 
 )
 
 
 func main() {
     log.Println("jobby starting")
     ctx := context.Background()
-    configPath := flag.String("c", "config.json", "location of config file")
-    flag.Parse()
     
-    theConfig, err := config.New(*configPath) 
+    config, err := config.New(ctx) 
     if err != nil {
         log.Fatalf("error, when creating config for main(). Error: %v", err)
     }
 
-    theClients, err := clients.New(ctx, theConfig.Clients)
+    clients, err := clients.New(ctx, config.Clients)
     if err != nil {
         log.Fatalf("error, when creating clients for main(). Error: %v", err)
     }
-    defer theClients.Destroy()
+    defer clients.Destroy()
 
-    theControllers := controllers.New(theClients)
+    models := models.New(clients)
+
+    theControllers := controllers.New(models)
     for _, con := range theControllers {
         go func() {
             err = con.Start(ctx)
@@ -38,8 +39,12 @@ func main() {
         }()
     }
 
+    httpControllers := controllers.NewHttpControllers(models)
+    router := router.New(httpControllers)
+
     log.Println("jobby running")
-    select {
-    case <- ctx.Done():
+    err = router.Run()
+    if err != nil {
+        log.Fatalf("error, when starting router for main(). Error: %v", err)
     }
 }
