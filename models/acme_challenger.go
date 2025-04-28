@@ -37,6 +37,7 @@ func NewAcmeChallengerModel(
         bucket: clients.Bucket,
         certRenewalWindowDurationInDays: config.CertRenewalWindowDurationInDays,
         certValidDurationInDays: config.CertValidDurationInDays,
+        certEmplacementLocation: config.CertEmplacementLocation,
         domains: config.Clients.Lego.Domains,
     }
 
@@ -104,7 +105,7 @@ func (m *AcmeChallengerModel) RefreshCertificate(ctx context.Context) error {
         }
         return nil
     } 
-
+    
     _, err = os.Stat(m.certEmplacementLocation)
     if os.IsNotExist(err) {
         privateKey, err := m.bucket.DownloadCertKeyFromConfigBunker(ctx)
@@ -118,6 +119,10 @@ func (m *AcmeChallengerModel) RefreshCertificate(ctx context.Context) error {
         err = m.emplaceCertificates(privateKey, cert)
         if err != nil {
             return fmt.Errorf("error, when emplaceCertificates() for RefreshCertificate(). Error: %v", err)
+        }
+        err = m.reloadHaProxy()
+        if err != nil {
+            return fmt.Errorf("error, when reloadHaProxy() for RefreshCertificate(). Error: %v", err)
         }
         return nil
     } 
@@ -179,10 +184,11 @@ func (m *AcmeChallengerModel) getNewExpiration() int64 {
 }
 
 func (m *AcmeChallengerModel) emplaceCertificates(privateKey, cert []byte) error {
-    file, err := os.Open(m.certEmplacementLocation)
-    if err != nil {
+    file, err := os.OpenFile(m.certEmplacementLocation, os.O_RDWR|os.O_CREATE, 0600)   
+    if err != nil {                                                   
         return fmt.Errorf("error, when opening file for emplaceCertificates(). Error: %v", err)
-    }
+    }                                                                 
+    defer file.Close()
     certs := m.stackCert(privateKey, cert)
     _, err = file.Write(certs)
     if err != nil {
