@@ -4,24 +4,28 @@ import (
     "log"
     "os"
     "os/exec"
+    "time"
     "fmt"
     "context"
     "strings"
 
     "github.com/JeremiahVaughan/jobby/clients" 
     "github.com/JeremiahVaughan/jobby/clients/database" 
+    "github.com/JeremiahVaughan/jobby/clients/sqlite" 
     "github.com/JeremiahVaughan/jobby/clients/bucket" 
 )
 
 type DatabaseBackupModel struct {
     databases []*database.Client
     bucket *bucket.Client
+    sqlite *sqlite.Client
 }
 
 func NewDatabaseBackupModel(clients *clients.Clients) *DatabaseBackupModel {
     return &DatabaseBackupModel{ 
         databases: clients.Databases, 
         bucket: clients.Bucket, 
+        sqlite: clients.Sqlite,
     }
 }
 
@@ -73,6 +77,34 @@ func (m *DatabaseBackupModel) BackupDatabases(ctx context.Context) error {
             return fmt.Errorf("error, when bucket.Upload() for models.DatabaseBackupModel.BackupDatabases(). Error: %v", err)
         }
     }
+    err = m.MarkDatabaseBackupAsHealthy()
+    if err != nil {
+        return fmt.Errorf("error, when MarkDatabaseBackupAsHealthy() for BackupDatabases(). Error: %v", err)
+    }
     log.Printf("database backup completed")
     return nil
+}
+
+func (m *DatabaseBackupModel) MarkDatabaseBackupAsHealthy() error {
+    currentTime := time.Now().Unix()
+    err := m.sqlite.UpdateDatabaseBackupLastUpdated(currentTime)
+    if err != nil {
+        return fmt.Errorf("error, when UpdateDatabaseBackupLastUpdated() for MarkDatabaseBackupAsHealthy(). Error: %v", err)
+    }
+    return nil
+}
+
+func (m *DatabaseBackupModel) HealthyCheck() (bool, error) {
+    updatedAt, err := m.sqlite.FetchDatabaseBackupLastUpdated()
+    if err != nil {
+        return false, fmt.Errorf("error, when FetchDatabaseBackupLastUpdated() for IsDatabaseBackupHealthy(). Error: %v", err)
+    }
+    currentTime := time.Now().Unix()
+    return isDatabaseBackupHealthy(updatedAt, currentTime), nil
+}
+
+func isDatabaseBackupHealthy(updatedAt, currentTime int64) bool {
+    numberOfDaysTillUnhealthy := 2
+    unhealthyAt := time.Unix(updatedAt, 0).AddDate(0, 0, numberOfDaysTillUnhealthy).Unix()
+    return unhealthyAt > currentTime
 }

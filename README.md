@@ -31,5 +31,5 @@ See status:
 ```sudo systemctl status jobby.service```
 
 See logs:
-```journalctl -u jobby.service```
+```journalctl --no-pager -u jobby.service```
 
