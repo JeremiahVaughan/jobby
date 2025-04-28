@@ -144,7 +144,6 @@ func (c *Client) Obtain(domains []string) (*certificate.Resource, error) {
     request := certificate.ObtainRequest{
 		Domains: c.config.Domains,
 		Bundle:  true,
-        MustStaple: true,
 	}
 	resource, err := c.legoClient.Certificate.Obtain(request)
 	if err != nil {
@@ -160,7 +159,6 @@ func (c *Client) Renew(oldCert []byte) (resource *certificate.Resource, err erro
         },
         &certificate.RenewOptions{
             Bundle:  true,
-            MustStaple: true,
         },
     )
     if err != nil {
