@@ -62,7 +62,7 @@ func (c *AcmeChallengerController) GetHealthStatus() (*healthy.HealthStatus, err
         return nil, fmt.Errorf("error, when HealthyCheck() for HealthyCheck(). Error: %v", err)
     }
     return &healthy.HealthStatus{
-        Unhealthy: isHealthy,
+        Healthy: isHealthy,
         Message: msg,
     }, nil
 }

@@ -44,7 +44,7 @@ func (c *DatabaseBackupController) Start(ctx context.Context) {
 func (c *DatabaseBackupController) GetHealthStatus() (*healthy.HealthStatus, error) {
     isHealthy, err := c.model.HealthyCheck()
     if err != nil {
-        return nil, fmt.Errorf("error, when HealthyCheck() for HealthyCheck(). Error: %v", err)
+        return nil, fmt.Errorf("error, when HealthyCheck() for GetHealthStatus(). Error: %v", err)
     }
     var msg string
     if isHealthy {
@@ -53,7 +53,7 @@ func (c *DatabaseBackupController) GetHealthStatus() (*healthy.HealthStatus, err
         msg = "database backups are failing"
     }
     return &healthy.HealthStatus{
-        Unhealthy: isHealthy,
+        Healthy: isHealthy,
         Message: msg,
     }, nil
 }
