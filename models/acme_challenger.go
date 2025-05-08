@@ -132,12 +132,12 @@ func (m *AcmeChallengerModel) RefreshCertificate(ctx context.Context) error {
 func (m *AcmeChallengerModel) recordCertificates(ctx context.Context, cert *certificate.Resource, domainChange bool) error {
     var err error
 
-    err = m.bucket.UploadCertToConfigBunker(ctx, cert.PrivateKey)
+    err = m.bucket.UploadCertToConfigBunker(ctx, cert.Certificate)
     if err != nil {
         return fmt.Errorf("error, when UploadToConfigBunker() for RefreshCertificate() for cert key. Error: %v", err)
     }
 
-    err = m.bucket.UploadCertKeyToConfigBunker(ctx, cert.Certificate)
+    err = m.bucket.UploadCertKeyToConfigBunker(ctx, cert.PrivateKey)
     if err != nil {
         return fmt.Errorf("error, when UploadToConfigBunker() for RefreshCertificate() for cert. Error: %v", err)
     }
