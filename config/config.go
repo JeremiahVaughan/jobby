@@ -30,6 +30,7 @@ type Nats struct {
 type Lego struct {
     Email string `json:"email"`
     Domains []string `json:"domains"`
+    CaDirUrl string `json:"caDirUrl"`
 }
 
 type Sqlite struct {
@@ -53,6 +54,7 @@ type Bucket struct {
     CertName string `json:"certName"`
     CertKeyName string `json:"certKeyName"`
     DomainsFileName string `json:"domainsFileName"`
+    UseTestDir bool `json:"useTestDir"`
 }
 
 func New(ctx context.Context, serviceName string) (Config, error) {

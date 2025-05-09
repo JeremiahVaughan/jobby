@@ -31,6 +31,8 @@ type Client struct {
     legoRegistrationFileName string
     legoRegistrationKeyFileName string
     domainsFileName string
+    useTestDir bool
+    s3Client *s3.Client
 }
 
 func New(
@@ -42,10 +44,10 @@ func New(
     if err != nil {
         return nil, fmt.Errorf("error, when loading default config. Error: %v", err)
     }
-    c := s3.NewFromConfig(cfg)
+    s3Client := s3.NewFromConfig(cfg)
     return &Client{
-        uploader: manager.NewUploader(c),
-        downloader: manager.NewDownloader(c),
+        uploader: manager.NewUploader(s3Client),
+        downloader: manager.NewDownloader(s3Client),
         serviceName: serviceName,
         configBucketName: config.ConfigBunkerBucketName,
         bitBunkerBucketName: config.BitBunkerBucketName,
@@ -54,64 +56,11 @@ func New(
         certName: config.CertName,
         certKeyName: config.CertKeyName,
         domainsFileName: config.DomainsFileName,
+        useTestDir: config.UseTestDir,
+        s3Client: s3Client,
     }, nil
 }
-
-func (c *Client) UploadFromDisk(
-    ctx context.Context,
-    fileLocation string,
-    objectName string,
-) error {
-    c.m.Lock()
-    defer c.m.Unlock()
-    file, err := os.Open(fileLocation)
-    if err != nil {
-        return fmt.Errorf("error, when opening file %s. Error: %v", fileLocation, err)
-    }
-    defer file.Close()
-    object := s3.PutObjectInput{
-        Bucket: aws.String(c.bitBunkerBucketName),
-        Key: aws.String(objectName),
-        Body: file,
-    }
-    _, err = c.uploader.Upload(ctx, &object) 
-    if err != nil {
-        return fmt.Errorf(
-            "error, when uploading file. BucketName: %s. Object Name: %s. Error: %v",
-            c.bitBunkerBucketName,
-            fileLocation,
-            err,
-        )
-    }
-    return nil
-}
-
-func (c *Client) DownloadToDisk(                                            
-   ctx context.Context,                                              
-   objectName string,                                                
-   outputLocation string,                                            
-) error {                                                             
-   c.m.Lock()                                                        
-   defer c.m.Unlock()                                                
                                                                      
-   outFile, err := os.Create(outputLocation)                         
-   if err != nil {                                                   
-       return fmt.Errorf("error, when creating output file %s. Error: %v", outputLocation, err)                                      
-   }                                                                 
-   defer outFile.Close()                                             
-                                                                     
-   object := &s3.GetObjectInput{                                     
-       Bucket: aws.String(c.bitBunkerBucketName),                            
-       Key: aws.String(objectName),                                  
-   }                                                                 
-                                                                     
-   _, err = c.downloader.Download(ctx, outFile, object)           
-   if err != nil {                                                   
-       return fmt.Errorf("error, failed to download file. Error: %v", err)         
-   }                                                                 
-                                                                     
-   return nil                                                        
-}                                                                     
 
 func (c *Client) UploadLegoRegistrationKeyToBucket(ctx context.Context, privateKey *ecdsa.PrivateKey) error {
 	der, err := x509.MarshalECPrivateKey(privateKey)
@@ -136,33 +85,6 @@ func (c *Client) UploadLegoRegistrationToBucket(ctx context.Context, reg *regist
     }
     return nil
 }
-
-func (c *Client) UploadToConfigBunker(                                    
-   ctx context.Context,                                              
-   data []byte,                                                      
-   fileName string,                                                
-) error {                                                             
-   c.m.Lock()                                                        
-   defer c.m.Unlock()                                                
-   dataReader := bytes.NewReader(data)                               
-   objectName := fmt.Sprintf("%s/%s", c.serviceName, fileName)
-   object := s3.PutObjectInput{                                      
-       Bucket: aws.String(c.configBucketName),                            
-       Key: aws.String(objectName),                                  
-       Body: dataReader,                                             
-       ContentLength: aws.Int64(int64(len(data))), 
-   }                                                                 
-   _, err := c.uploader.Upload(ctx, &object)                         
-   if err != nil {                                                   
-       return fmt.Errorf(                                            
-           "error, when uploading data from memory. BucketName: %s. Object Name: %s. Error: %v",                                          
-           c.configBucketName,                                            
-           objectName,                                               
-           err,                                                      
-       )                                                             
-   }                                                                 
-   return nil                                                        
-}                                                                     
 
 func (c *Client) DownloadDomainsFromBucket(ctx context.Context) ([]string, error) {
     theBytes, err := c.DownloadFromConfigBunker(ctx, c.domainsFileName)
@@ -215,33 +137,6 @@ func (c *Client) DownloadLegoRegistrationFromBucket(ctx context.Context) (*regis
     return &reg, nil
 }
 
-func (c *Client) DownloadFromConfigBunker(
-    ctx context.Context,
-    fileName string,
-) ([]byte, error) {                                                     
-   cfg, err := s3_config.LoadDefaultConfig(ctx) 
-   if err != nil {                                                   
-       return nil, fmt.Errorf("error, unable to load SDK config, " +        
-           "you may need to configure your AWS credentials. Error: %v", err)                                                                  
-   }                                                                 
-   svc := s3.NewFromConfig(cfg)                                      
-   configFile := fmt.Sprintf("%s/%s", c.serviceName, fileName)
-   objectInput := &s3.GetObjectInput{                                
-       Bucket: aws.String(c.configBucketName),                                   
-       Key: aws.String(configFile),                                         
-   }                                                                 
-   result, err := svc.GetObject(ctx, objectInput)                    
-   if err != nil {                                                   
-       return nil, fmt.Errorf("error, failed to get object %s from bucket %s. Error: %v", configFile, c.configBucketName, err)                                            
-   }                                                                 
-   defer result.Body.Close()                                         
-   body, err := io.ReadAll(result.Body)                          
-   if err != nil {                                                   
-       return nil, fmt.Errorf("error, failed to read object body. Error: %v", err) 
-   }                                                                 
-   return body, nil                                                  
-}                                                                     
-
 func (c *Client) DownloadCertFromConfigBunker(ctx context.Context) ([]byte, error) {
     theBytes, err := c.DownloadFromConfigBunker(ctx, c.certName)
     if err != nil {
@@ -272,4 +167,124 @@ func (c *Client) UploadCertKeyToConfigBunker(ctx context.Context, theBytes []byt
         return fmt.Errorf("error, when UploadToConfigBunker() for UploadCertKeyToConfigBunker(). Error: %v", err)
     }
     return nil
+}
+
+func applyTestFolder(objectName string) string {
+    return fmt.Sprintf("testing/%s", objectName) 
+}
+
+func (c *Client) UploadToConfigBunker(                                    
+   ctx context.Context,                                              
+   data []byte,                                                      
+   fileName string,                                                
+) error {                                                             
+    c.m.Lock()                                                        
+    defer c.m.Unlock()                                                
+    dataReader := bytes.NewReader(data)                               
+    objectName := fmt.Sprintf("%s/%s", c.serviceName, fileName)
+    if c.useTestDir {
+        objectName = applyTestFolder(objectName)
+    }
+    object := s3.PutObjectInput{                                      
+        Bucket: aws.String(c.configBucketName),                            
+        Key: aws.String(objectName),                                  
+        Body: dataReader,                                             
+        ContentLength: aws.Int64(int64(len(data))), 
+    }                                                                 
+    _, err := c.uploader.Upload(ctx, &object)                         
+    if err != nil {                                                   
+        return fmt.Errorf(                                            
+            "error, when uploading data from memory. BucketName: %s. Object Name: %s. Error: %v",                                          
+            c.configBucketName,                                            
+            objectName,                                               
+            err,                                                      
+        )                                                             
+    }                                                                 
+    return nil                                                        
+}                                                                     
+
+func (c *Client) DownloadFromConfigBunker(
+    ctx context.Context,
+    objectName string,
+) ([]byte, error) {                                                     
+    if c.useTestDir {
+        objectName = applyTestFolder(objectName)
+    }
+    configFile := fmt.Sprintf("%s/%s", c.serviceName, objectName)
+    objectInput := &s3.GetObjectInput{                                
+        Bucket: aws.String(c.configBucketName),                                   
+        Key: aws.String(configFile),                                         
+    }                                                                 
+    result, err := c.s3Client.GetObject(ctx, objectInput)                    
+    if err != nil {                                                   
+        return nil, fmt.Errorf("error, failed to get object %s from bucket %s. Error: %v", configFile, c.configBucketName, err)                                            
+    }                                                                 
+    defer result.Body.Close()                                         
+    body, err := io.ReadAll(result.Body)                          
+    if err != nil {                                                   
+        return nil, fmt.Errorf("error, failed to read object body. Error: %v", err) 
+    }                                                                 
+    return body, nil                                                  
+}                                                                     
+
+func (c *Client) UploadFromDisk(
+    ctx context.Context,
+    fileLocation string,
+    objectName string,
+) error {
+    if c.useTestDir {
+        objectName = applyTestFolder(objectName)
+    }
+    c.m.Lock()
+    defer c.m.Unlock()
+    file, err := os.Open(fileLocation)
+    if err != nil {
+        return fmt.Errorf("error, when opening file %s. Error: %v", fileLocation, err)
+    }
+    defer file.Close()
+    object := s3.PutObjectInput{
+        Bucket: aws.String(c.bitBunkerBucketName),
+        Key: aws.String(objectName),
+        Body: file,
+    }
+    _, err = c.uploader.Upload(ctx, &object) 
+    if err != nil {
+        return fmt.Errorf(
+            "error, when uploading file. BucketName: %s. Object Name: %s. Error: %v",
+            c.bitBunkerBucketName,
+            fileLocation,
+            err,
+        )
+    }
+    return nil
+}
+
+func (c *Client) DownloadToDisk(                                            
+   ctx context.Context,                                              
+   objectName string,                                                
+   outputLocation string,                                            
+) error {                                                             
+    if c.useTestDir {
+        objectName = applyTestFolder(objectName)
+    }
+    c.m.Lock()                                                        
+    defer c.m.Unlock()                                                
+                                                                      
+    outFile, err := os.Create(outputLocation)                         
+    if err != nil {                                                   
+        return fmt.Errorf("error, when creating output file %s. Error: %v", outputLocation, err)                                      
+    }                                                                 
+    defer outFile.Close()                                             
+                                                                      
+    object := &s3.GetObjectInput{                                     
+        Bucket: aws.String(c.bitBunkerBucketName),                            
+        Key: aws.String(objectName),                                  
+    }                                                                 
+                                                                      
+    _, err = c.downloader.Download(ctx, outFile, object)           
+    if err != nil {                                                   
+        return fmt.Errorf("error, failed to download file. Error: %v", err)         
+    }                                                                 
+                                                                      
+    return nil                                                        
 }

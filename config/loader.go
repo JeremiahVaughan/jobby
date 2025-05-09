@@ -25,7 +25,7 @@ func fetchConfigFromS3(ctx context.Context, serviceName string) ([]byte, error) 
     configFile := fmt.Sprintf("%s/config.json", serviceName)
     if !isProductionMachine() {
         log.Println("non-production mode detected, switching to testing configuration")
-        configFile = fmt.Sprintf("testing-overrides/%s", configFile)
+        configFile = fmt.Sprintf("testing/%s", configFile)
     }
     objectInput := &s3.GetObjectInput{                                
        Bucket: aws.String(bucketName),                                   

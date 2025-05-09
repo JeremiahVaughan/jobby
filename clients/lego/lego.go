@@ -47,21 +47,13 @@ func (c *Client) GetRegistration() *registration.Resource {
 
     var reg *registration.Resource
     if !userRegistered {
-        reg, err = c.register(ctx, c.GetPrivateKey())
-        if err != nil {
-            err = fmt.Errorf("error, when register() for NewAcmeChallengerModel(). Error: %v", err)
-            c.healthy.ReportUnexpectedError(nil, err)
-            return nil
-        }
-        log.Printf("registration response: %v", reg)
-    } else {
-        reg, err = c.bucket.DownloadLegoRegistrationFromBucket(ctx)
-        if err != nil {
-            err = fmt.Errorf("error, when DownloadLegoRegistrationFromBucket() for NewAcmeChallengerModel(). Error: %v", err)
-            c.healthy.ReportUnexpectedError(nil, err)
-            return nil
-        }
-        log.Printf("registration download: %v", reg)
+        return nil
+    } 
+    reg, err = c.bucket.DownloadLegoRegistrationFromBucket(ctx)
+    if err != nil {
+        err = fmt.Errorf("error, when DownloadLegoRegistrationFromBucket() for NewAcmeChallengerModel(). Error: %v", err)
+        c.healthy.ReportUnexpectedError(nil, err)
+        return nil
     }
 	return reg
 }
@@ -96,7 +88,7 @@ func (c *Client) GetPrivateKey() crypto.PrivateKey {
 	return privateKey
 }
 
-func New(config config.Lego, bucket *bucket.Client, sqlite *sqlite.Client, healthy *healthy.Client) (*Client, error) {
+func New(ctx context.Context, config config.Lego, bucket *bucket.Client, sqlite *sqlite.Client, healthy *healthy.Client) (*Client, error) {
     c := &Client{
 		config: config,
         bucket: bucket,
@@ -106,8 +98,7 @@ func New(config config.Lego, bucket *bucket.Client, sqlite *sqlite.Client, healt
 
 	legoConfig := lego.NewConfig(c)
 
-    // uncomment for testing
-    // legoConfig.CADirURL = "https://acme-staging-v02.api.letsencrypt.org/directory"
+    legoConfig.CADirURL = config.CaDirUrl
 
     // todo look into providing the newer smaller certificates as well should clients support it
 	legoConfig.Certificate.KeyType = certcrypto.RSA2048
@@ -118,26 +109,38 @@ func New(config config.Lego, bucket *bucket.Client, sqlite *sqlite.Client, healt
         return nil, fmt.Errorf("error, when creating new lego client. Error: %v", err)
 	}
 
+    userRegistered, err := c.sqlite.IsUserRegistered()
+    if err != nil {
+        return nil, fmt.Errorf("error, when IsUserRegistered() for New(). Error: %v", err)
+    }
+
+    if !userRegistered {
+        err = c.register(ctx, c.GetPrivateKey())
+        if err != nil {
+            return nil, fmt.Errorf("error, when register() for New(). Error: %v", err)
+        }
+    }
+
     return c, nil
 }
 
-func (c *Client) register(ctx context.Context, key crypto.PrivateKey) (*registration.Resource, error) {
+func (c *Client) register(ctx context.Context, key crypto.PrivateKey) error {
     reg, err := c.legoClient.Registration.Register(registration.RegisterOptions{TermsOfServiceAgreed: true})
     if err != nil {
-        return nil, fmt.Errorf("error, when registering new lego user. Error: %v", err)
+        return fmt.Errorf("error, when registering new lego user. Error: %v", err)
     }
 
     err = c.bucket.UploadLegoRegistrationToBucket(ctx, reg)
     if err != nil {
-        return nil, fmt.Errorf("error, when UploadLegoRegistrationToBucket() for register(). Error: %v", err)
+        return fmt.Errorf("error, when UploadLegoRegistrationToBucket() for register(). Error: %v", err)
     }
 
     err = c.sqlite.MarkUserAsRegistered()
     if err != nil {
-        return nil, fmt.Errorf("error, when MarkUserAsRegistered() for register(). Error: %v", err)
+        return fmt.Errorf("error, when MarkUserAsRegistered() for register(). Error: %v", err)
     }
 
-    return reg, nil
+    return nil
 }
 
 func (c *Client) Obtain(domains []string) (*certificate.Resource, error) {

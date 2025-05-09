@@ -47,7 +47,7 @@ func New(
     if err != nil {
         return nil, fmt.Errorf("error, when creating new healthy client for clients.New(). Error: %v", err)
     }
-    theClients.Lego, err = lego.New(config.Lego, theClients.Bucket, theClients.Sqlite, theClients.Healthy)
+    theClients.Lego, err = lego.New(ctx, config.Lego, theClients.Bucket, theClients.Sqlite, theClients.Healthy)
     if err != nil {
         return nil, fmt.Errorf("error, when creating new lego client for clients.New(). Error: %v", err)
     }
